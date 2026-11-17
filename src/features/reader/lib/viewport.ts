@@ -1,9 +1,10 @@
-import type { ComicPage, Panel, ReadingMode } from "../../../shared/document";
-export function frameStyle(page: ComicPage, panel: Panel, mode: ReadingMode) {
-  const r =
-    mode === "panel"
-      ? panel.rect
-      : { x: 0, y: 0, width: page.width, height: page.height };
+import type {
+  ComicPage,
+  Panel,
+  ReadingMode,
+  Rect,
+} from "../../../shared/document";
+export function frameStyleForRect(page: ComicPage, r: Rect) {
   return {
     aspectRatio: `${r.width}/${r.height}`,
     width: "100%",
@@ -11,6 +12,17 @@ export function frameStyle(page: ComicPage, panel: Panel, mode: ReadingMode) {
     backgroundSize: `${(page.width / r.width) * 100}% ${(page.height / r.height) * 100}%`,
     backgroundPosition: `${(r.x / (page.width - r.width || 1)) * 100}% ${(r.y / (page.height - r.height || 1)) * 100}%`,
   };
+}
+export function frameStyle(
+  page: ComicPage,
+  panel: Panel,
+  mode: ReadingMode,
+) {
+  const r =
+    mode === "panel" || mode === "director"
+      ? panel.rect
+      : { x: 0, y: 0, width: page.width, height: page.height };
+  return frameStyleForRect(page, r);
 }
 export function constrainPan(x: number, y: number, zoom: number) {
   const limit = (zoom - 1) * 220;

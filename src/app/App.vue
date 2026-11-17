@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Grid2X2,
   Scan,
+  Clapperboard,
   Minus,
   Plus,
   Bookmark,
@@ -16,6 +17,7 @@ import { ChapterPanel } from "../features/chapters";
 import { ReaderStage, PanelStrip } from "../features/reader";
 import { AudioPanel } from "../features/audio";
 import { ProgressPanel } from "../features/progress";
+import { DirectorPanel, PreviewBar } from "../features/director";
 import { useWorkspace } from "./workspace";
 const {
   doc,
@@ -24,6 +26,7 @@ const {
   library: l,
   chapters: c,
   audio: a,
+  director: d,
 } = useWorkspace();
 const current = r.current,
   at = r.location,
@@ -35,9 +38,45 @@ const current = r.current,
 const chapterIndex = computed(
   () => doc.value.chapters.findIndex((c) => c.id === at.value.chapterId) + 1,
 );
+const cameraFrame = computed(() =>
+  mode.value === "director" ? d.engine.frame.value : null,
+);
+const cutPulse = computed(() => d.engine.cutPulse.value);
+const directorCue = computed(() => {
+  const dialogueCue = d.engine.activeDialogue.value;
+  const panel = current.value.page?.panels.find(
+    (p) => p.id === dialogueCue?.panelId,
+  );
+  if (!dialogueCue || !panel) return null;
+  return { speaker: panel.speaker, text: panel.dialogue };
+});
+const previewCue = computed(() =>
+  directorCue.value
+    ? {
+        title: cue.value.title,
+        kind: cue.value.kind,
+        speaker: directorCue.value.speaker,
+        text: directorCue.value.text,
+      }
+    : {
+        title: cue.value.title,
+        kind: cue.value.kind,
+        speaker: "预演提示",
+        text: "对白将随镜头进度在此揭示",
+      },
+);
 function focus(id: string) {
+  // 导演模式下分镜条点击只在时间线内跳转，不退出预演
+  if (mode.value === "director") {
+    d.engine.seekPanel(id);
+    return;
+  }
   r.dispatch({ type: "panel", id });
   r.setMode("panel");
+}
+function enterDirector() {
+  d.engine.reset();
+  r.setMode("director");
 }
 </script>
 <template>
@@ -115,7 +154,13 @@ function focus(id: string) {
                 :class="{ active: mode === 'panel' }"
                 @click="r.setMode('panel')"
               >
-                <Scan :size="14" /> 逐格
+                <Scan :size="14" /> 逐格</button
+              ><button
+                class="director-switch"
+                :class="{ active: mode === 'director' }"
+                @click="enterDirector"
+              >
+                <Clapperboard :size="14" /> 导演
               </button>
             </div>
             <span class="tool-divider"></span
@@ -135,10 +180,14 @@ function focus(id: string) {
           :panel="current.panel"
           :location="at"
           :mode="mode"
+          :camera-frame="cameraFrame"
+          :director="d"
+          :cut-pulse="cutPulse"
           @move="r.dispatch({ type: 'move', delta: $event })"
           @pan="r.pan"
           @panel="focus"
         />
+        <PreviewBar v-if="mode === 'director'" :director="d" />
         <div class="page-position">
           <span>{{ current.chapter?.subtitle }}</span>
           <div>
@@ -152,6 +201,7 @@ function focus(id: string) {
           v-if="current.page"
           :page="current.page"
           :active="at.panelId"
+          :director="mode === 'director' ? d : undefined"
           @select="focus"
         />
       </main>
@@ -160,12 +210,18 @@ function focus(id: string) {
           :enabled="a.enabled.value"
           :volume="a.volume.value"
           :dialogue="a.dialogue.value"
-          :cue="cue"
+          :cue="mode === 'director' ? previewCue : cue"
           :error="a.error.value"
           @toggle="a.toggle"
           @volume="a.volume.value = $event"
           @dialogue="a.dialogue.value = !a.dialogue.value"
-        /><ProgressPanel
+        />
+        <DirectorPanel
+          v-if="current.page && mode === 'director'"
+          :page="current.page"
+          :director="d"
+        />
+        <ProgressPanel
           :bookmarks="bookmarks"
           :percent="metrics.percent"
           :status="status"
@@ -175,9 +231,9 @@ function focus(id: string) {
         />
         <div class="reading-tip">
           <span>✦ 阅读小贴士</span>
-          <p>试试逐格模式，让画面与声音<br />带你走进故事的深处。</p>
+          <p>试试导演模式，给每一格安排取景、停留<br />与转场，预演一段有节奏的动态漫画。</p>
           <kbd>←</kbd><kbd>→</kbd> <small>切换画面</small><br /><kbd>Space</kbd>
-          <small>播放 / 暂停声景</small>
+          <small>{{ mode === "director" ? "预演 / 暂停" : "播放 / 暂停声景" }}</small>
         </div>
       </aside>
     </div>

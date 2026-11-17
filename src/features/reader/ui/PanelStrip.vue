@@ -1,8 +1,23 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { ShieldAlert } from "lucide-vue-next";
 import type { ComicPage } from "../../../shared/document";
 import { frameStyle } from "../lib/viewport";
-defineProps<{ page: ComicPage; active: string }>();
+import type { Director } from "../../director/model/director";
+
+const props = defineProps<{
+  page: ComicPage;
+  active: string;
+  director?: Director;
+}>();
 const emit = defineEmits<{ select: [id: string] }>();
+const directorActive = computed(
+  () => props.director?.engine.activePanelId.value ?? "",
+);
+function choose(id: string) {
+  if (props.director) props.director.engine.seekPanel(id);
+  emit("select", id);
+}
 </script>
 <template>
   <section class="panel-strip">
@@ -14,13 +29,19 @@ const emit = defineEmits<{ select: [id: string] }>();
       <button
         v-for="(panel, i) in page.panels"
         :key="panel.id"
-        :class="{ selected: active === panel.id }"
-        @click="emit('select', panel.id)"
+        :class="{
+          selected: active === panel.id || directorActive === panel.id,
+          stale: panel.shot?.stale,
+        }"
+        @click="choose(panel.id)"
       >
         <div :style="frameStyle(page, panel, 'panel')"></div>
         <span
           ><b>{{ String(i + 1).padStart(2, "0") }}</b> {{ panel.speaker }}
-          <small>{{ panel.duration }}s</small></span
+          <small
+            ><ShieldAlert v-if="panel.shot?.stale" :size="10" />
+            {{ panel.duration }}s</small
+          ></span
         >
       </button>
     </div>

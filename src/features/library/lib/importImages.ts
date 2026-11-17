@@ -1,5 +1,6 @@
 import type { Chapter, ComicPage } from "../../../shared/document";
 import { makeId } from "../../../shared/commands";
+import { defaultShot } from "../../../shared/migrate";
 async function readImage(file: File): Promise<ComicPage> {
   if (
     !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)
@@ -23,21 +24,21 @@ async function readImage(file: File): Promise<ComicPage> {
   );
   if (dimensions.width * dimensions.height > 40000000)
     throw new Error("图片分辨率过大");
+  const panel = {
+    id: makeId("panel"),
+    rect: { x: 0, y: 0, ...dimensions },
+    dialogue: "在这一页，留下属于你的故事。",
+    speaker: "旁白",
+    sound: "wind" as const,
+    duration: 5,
+  };
   return {
     id: makeId("page"),
     title: file.name,
     image,
     ...dimensions,
-    panels: [
-      {
-        id: makeId("panel"),
-        rect: { x: 0, y: 0, ...dimensions },
-        dialogue: "在这一页，留下属于你的故事。",
-        speaker: "旁白",
-        sound: "wind",
-        duration: 5,
-      },
-    ],
+    safeArea: { x: 0, y: 0, ...dimensions },
+    panels: [{ ...panel, shot: defaultShot(panel, 0, 1) }],
   };
 }
 export async function importImages(files: File[]): Promise<Chapter> {

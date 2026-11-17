@@ -29,7 +29,8 @@ export function advance(
   const positions: ReadingLocation[] = [];
   for (const c of doc.chapters)
     for (const p of c.pages)
-      for (const panel of mode === "panel" ? p.panels : p.panels.slice(0, 1))
+      for (const panel of
+        mode === "page" ? p.panels.slice(0, 1) : p.panels)
         positions.push({
           chapterId: c.id,
           pageId: p.id,

@@ -1,5 +1,6 @@
-import type { ComicDocument } from "../../../shared/document";
+import type { ComicDocument, Panel } from "../../../shared/document";
 import { artwork } from "./artwork";
+import { defaultShot } from "../../../shared/migrate";
 export function demoDocument(): ComicDocument {
   const lines = [
     [
@@ -20,6 +21,12 @@ export function demoDocument(): ComicDocument {
       "那封信，是写给昨天的自己。",
       "天亮了。我们出发吧。",
     ],
+  ];
+  const rects = [
+    { x: 12, y: 12, width: 876, height: 532 },
+    { x: 12, y: 558, width: 430, height: 390 },
+    { x: 456, y: 558, width: 432, height: 390 },
+    { x: 12, y: 962, width: 876, height: 226 },
   ];
   return {
     version: 1,
@@ -42,19 +49,18 @@ export function demoDocument(): ComicDocument {
         width: 900,
         height: 1200,
         image: artwork(c + p),
-        panels: text.map((dialogue, i) => ({
-          id: `panel-${c}-${p}-${i}`,
-          dialogue,
-          speaker: i % 2 ? "陈屿" : "旁白",
-          sound: i === 2 ? "pulse" : "rain",
-          duration: 4 + i,
-          rect: [
-            { x: 12, y: 12, width: 876, height: 532 },
-            { x: 12, y: 558, width: 430, height: 390 },
-            { x: 456, y: 558, width: 432, height: 390 },
-            { x: 12, y: 962, width: 876, height: 226 },
-          ][i]!,
-        })),
+        safeArea: { x: 0, y: 0, width: 900, height: 1200 },
+        panels: text.map((dialogue, i) => {
+          const panel: Panel = {
+            id: `panel-${c}-${p}-${i}`,
+            dialogue,
+            speaker: i % 2 ? "陈屿" : "旁白",
+            sound: i === 2 ? "pulse" : "rain",
+            duration: 4 + i,
+            rect: rects[i]!,
+          };
+          return { ...panel, shot: defaultShot(panel, i, text.length) };
+        }),
       })),
     })),
   };
